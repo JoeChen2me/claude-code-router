@@ -84,21 +84,31 @@ const getUseModel = async (
   }
   // if tokenCount is greater than the configured threshold, use the long context model
   const longContextThreshold = config.Router.longContextThreshold || 60000;
+  // Check if previous request's input tokens exceeded threshold and current request is substantial
   const lastUsageThreshold =
     lastUsage &&
     lastUsage.input_tokens > longContextThreshold &&
-    tokenCount > 20000;
+    tokenCount > 20000; // Minimum token threshold to avoid small requests triggering long context mode
   const tokenCountThreshold = tokenCount > longContextThreshold;
   if (
     (lastUsageThreshold || tokenCountThreshold) &&
     config.Router.longContext
   ) {
-    log(
-      "Using long context model due to token count:",
-      tokenCount,
-      "threshold:",
-      longContextThreshold
-    );
+    if (tokenCountThreshold) {
+      log(
+        "Using long context model due to CURRENT token count exceeding threshold:",
+        "current:", tokenCount,
+        "threshold:", longContextThreshold
+      );
+    } else {
+      // This must be lastUsageThreshold due to the if condition above
+      log(
+        "Using long context model due to PREVIOUS request token count exceeding threshold:",
+        "previous_input_tokens:", lastUsage?.input_tokens,
+        "current:", tokenCount,
+        "threshold:", longContextThreshold
+      );
+    }
     return config.Router.longContext;
   }
   if (
